@@ -1,0 +1,17 @@
+[package]
+authors = ["Michael Leonhard <michael@leonhardllc.com>"]
+description = "Control an Applin™ client programmatically"
+categories = ["development-tools::testing", "gui", "network-programming"]
+edition = "2021"
+keywords = ["applin", "headless", "client", "test", "testing"]
+license-file = "License.txt"
+name = "applin_headless"
+repository = "https://github.com/leonhard-llc/applin-rust"
+version = "0.1.0"
+
+[dependencies]
+applin = "^0.2.7"
+url = "2"
+ureq = { version = "2", features = ["cookies", "json"] }
+
+[dev-dependencies]

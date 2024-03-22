@@ -1,6 +1,6 @@
 //! # `applin_headless`
 //!
-//! [![crates.io version](https://img.shields.io/crates/v/applin.svg)](https://crates.io/crates/applin_headless)
+//! [![crates.io version](https://img.shields.io/crates/v/applin_headless.svg)](https://crates.io/crates/applin_headless)
 //! [![unsafe forbidden](https://raw.githubusercontent.com/leonhard-llc/applin-headless-rust/main/unsafe-forbidden-success.svg)](https://github.com/rust-secure-code/safety-dance/)
 //! [![pipeline status](https://github.com/leonhard-llc/applin-headless-rust/workflows/CI/badge.svg)](https://github.com/leonhard-llc/applin-headless-rust/actions)
 //!

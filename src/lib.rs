@@ -1,3 +1,19 @@
+//! # `applin_headless`
+//!
+//! [![crates.io version](https://img.shields.io/crates/v/applin.svg)](https://crates.io/crates/applin_headless)
+//! [![unsafe forbidden](https://raw.githubusercontent.com/leonhard-llc/applin-headless-rust/main/unsafe-forbidden-success.svg)](https://github.com/rust-secure-code/safety-dance/)
+//! [![pipeline status](https://github.com/leonhard-llc/applin-headless-rust/workflows/CI/badge.svg)](https://github.com/leonhard-llc/applin-rust/actions)
+//!
+//! Create an Applin™ client and control it from Rust code. Great for tests.
+//!
+//! <https://www.applin.dev/>
+//!
+//! # Cargo Geiger Safety Report
+//! # Changelog
+//!
+//! - v0.1.0 - Impersonates applin-ios 0.38.0.
+#![forbid(unsafe_code)]
+
 use std::collections::{HashMap, HashSet};
 use std::time::Duration;
 
@@ -11,6 +27,8 @@ use url::Url;
 
 #[allow(clippy::needless_lifetimes)]
 pub trait WidgetExtension {
+    /// # Errors
+    /// Returns `Err` when called on a widget type that cannot have actions.
     fn actions(&self) -> Result<&Vec<Action>, String>;
     #[must_use]
     fn clone_shallow(&self) -> Self;
@@ -296,13 +314,13 @@ impl WidgetExtension for Widget {
                     result.push((
                         inner.var_name1.as_str(),
                         Var::String(inner.initial_string1.clone()),
-                    ))
+                    ));
                 }
                 if !inner.var_name2.is_empty() {
                     result.push((
                         inner.var_name2.as_str(),
                         Var::String(inner.initial_string2.clone()),
-                    ))
+                    ));
                 }
                 result
             }
@@ -328,6 +346,7 @@ pub trait PageExtension {
     #[must_use]
     fn vars(&self) -> Vec<(&str, Var)>;
 }
+
 impl PageExtension for Page {
     fn descendents(&self) -> Vec<&Widget> {
         match self {
@@ -377,7 +396,10 @@ pub enum Var {
     Number(Real32),
     String(String),
 }
+
 impl Var {
+    /// # Errors
+    /// Returns `Err` when the variable is not boolean.
     pub fn bool(&self) -> Result<bool, String> {
         match self {
             Var::Bool(b) => Ok(*b),
@@ -386,6 +408,8 @@ impl Var {
         }
     }
 
+    /// # Errors
+    /// Returns `Err` when the variable is not a number.
     pub fn number(&self) -> Result<Real32, String> {
         match self {
             Var::Bool(b) => Err(format!("expected number var but found bool: {b}")),
@@ -394,6 +418,8 @@ impl Var {
         }
     }
 
+    /// # Errors
+    /// Returns `Err` when the variable is not a string.
     pub fn string(&self) -> Result<String, String> {
         match self {
             Var::Bool(b) => Err(format!("expected string var but found bool: {b}")),
@@ -402,20 +428,22 @@ impl Var {
         }
     }
 }
+
 impl From<Var> for Value {
     fn from(value: Var) -> Self {
         match value {
             Var::Bool(b) => Value::Bool(b),
-            Var::Number(n) => Value::Number(Number::from_f64(n.get() as f64).unwrap()),
+            Var::Number(n) => Value::Number(Number::from_f64(f64::from(n.get())).unwrap()),
             Var::String(s) => Value::String(s),
         }
     }
 }
+
 impl From<&Var> for Value {
     fn from(value: &Var) -> Self {
         match value {
             Var::Bool(b) => Value::Bool(*b),
-            Var::Number(n) => Value::Number(Number::from_f64(n.get() as f64).unwrap()),
+            Var::Number(n) => Value::Number(Number::from_f64(f64::from(n.get())).unwrap()),
             Var::String(s) => Value::String(s.clone()),
         }
     }
@@ -430,7 +458,10 @@ pub struct ApplinClient {
     pub next_photo_upload: Option<Vec<u8>>,
     pub vars: HashMap<String, Var>,
 }
+
 impl ApplinClient {
+    /// # Panics
+    /// Panics when it fails to parse `url`.
     pub fn new(url: impl AsRef<str>) -> Self {
         Self {
             agent: ureq::AgentBuilder::new()
@@ -446,6 +477,8 @@ impl ApplinClient {
         }
     }
 
+    /// # Errors
+    /// Returns `Err` when a modal is visible.
     pub fn back(&mut self) -> Result<bool, String> {
         if self.modal.is_some() {
             return Err("modal is visible, cannot press back".to_string());
@@ -462,6 +495,8 @@ impl ApplinClient {
         self.do_actions(actions)
     }
 
+    /// # Errors
+    /// Returns `Err` when the server returns a response other than 2xx or 4xx.
     pub fn process_result(
         &mut self,
         result: Result<ureq::Response, ureq::Error>,
@@ -475,14 +510,11 @@ impl ApplinClient {
         let content_type = response.content_type().to_string();
         match response.status() {
             status if (200..=299).contains(&status) => {
-                println!("{} {} content_type={:?}", status, status_text, content_type);
+                println!("{status} {status_text} content_type={content_type:?}");
             }
             status if (400..=499).contains(&status) => {
                 let body = response.into_string().map_err(|e| e.to_string())?;
-                println!(
-                    "{} {} content_type={:?} body={:?}",
-                    status, status_text, content_type, body
-                );
+                println!("{status} {status_text} content_type={content_type:?} body={body:?}");
                 self.last_error = Some(body);
                 return Ok(None);
             }
@@ -491,6 +523,10 @@ impl ApplinClient {
         Ok(Some(response))
     }
 
+    /// # Errors
+    /// Returns `Err` when a request to the server fails.
+    /// # Panics
+    /// Panics when processing a `pop` action and the stack is empty.
     pub fn do_actions(&mut self, actions: Vec<Action>) -> Result<bool, String> {
         for action in actions {
             let success = match action.typ.as_str() {
@@ -530,6 +566,8 @@ impl ApplinClient {
         Ok(true)
     }
 
+    /// # Errors
+    /// Returns `Err` when the widget is not found.
     pub fn find_id(&self, id: impl AsRef<str>) -> Result<&Widget, String> {
         let id = id.as_ref();
         self.page()
@@ -539,6 +577,8 @@ impl ApplinClient {
             .ok_or_else(|| format!("widget not found with id {id:?}"))
     }
 
+    /// # Errors
+    /// Returns `Err` when the widget is not found.
     pub fn find_text(&self, text: impl AsRef<str>) -> Result<&Widget, String> {
         let text = text.as_ref();
         self.page()
@@ -548,6 +588,8 @@ impl ApplinClient {
             .ok_or_else(|| format!("widget not found with text {text:?}"))
     }
 
+    /// # Errors
+    /// Returns `Err` when the widget is not found.
     pub fn find_var(&self, var_name: impl AsRef<str>) -> Result<&Widget, String> {
         let var_name = var_name.as_ref();
         self.page()
@@ -557,18 +599,29 @@ impl ApplinClient {
             .ok_or_else(|| format!("widget not found with var_name {var_name:?}"))
     }
 
+    /// # Panics
+    /// * Panics when the page stack is empty.
+    #[must_use]
     pub fn key(&self) -> &str {
         self.stack.last().unwrap().0.as_str()
     }
 
+    #[must_use]
     pub fn modal(&self) -> Option<&Action> {
         self.modal.as_ref()
     }
 
+    /// # Panics
+    /// * Panics when the page stack is empty.
+    #[must_use]
     pub fn page(&self) -> &Page {
         &self.stack.last().unwrap().1
     }
 
+    /// # Errors
+    /// Returns `Err` when a request to the server fails.
+    /// # Panics
+    /// * Panics when the page stack is empty.
     pub fn poll(&mut self) -> Result<bool, String> {
         let vars = self.vars();
         let key = self.stack.last().unwrap().0.as_str();
@@ -597,13 +650,12 @@ impl ApplinClient {
         for widget in applin_response.page.descendents() {
             let id = widget.id();
             if !id.is_empty() && !found_ids.insert(id) {
-                return Err(format!("page has more than one widget with id {:?}", id));
+                return Err(format!("page has more than one widget with id {id:?}"));
             }
             for (var_name, _var) in widget.vars() {
                 if !found_var_names.insert(var_name) {
                     return Err(format!(
-                        "page has more than one widget with var_name {:?}",
-                        var_name
+                        "page has more than one widget with var_name {var_name:?}"
                     ));
                 }
             }
@@ -612,6 +664,10 @@ impl ApplinClient {
         Ok(true)
     }
 
+    /// # Errors
+    /// * Returns `Err` when the page is already on the stack.
+    /// * Returns `Err` when the request to the server fails.
+    /// * Returns `Err` when the server returns a response other than 2xx or 4xx.
     pub fn push(&mut self, key: impl AsRef<str>) -> Result<bool, String> {
         let key = key.as_ref();
         if self.stack.iter().any(|(k, _p)| k == key) {
@@ -628,6 +684,8 @@ impl ApplinClient {
         Ok(success)
     }
 
+    /// # Errors
+    /// * Returns `Err` when the page contains multiple widgets with the same name.
     pub fn vars_json_body(&self) -> Result<HashMap<String, Value>, String> {
         let mut body: HashMap<String, Value> = HashMap::new();
         let vars = self.vars();
@@ -642,7 +700,7 @@ impl ApplinClient {
                     Some(_) => {
                         return Err(format!(
                             "multiple vars resolve to name {array_name:?}: {vars:?}"
-                        ))
+                        ));
                     }
                 }
             } else if let Some((obj_name, key)) = name.split_once('#') {
@@ -652,7 +710,7 @@ impl ApplinClient {
                     None => {
                         body.insert(
                             obj_name.to_string(),
-                            Value::from_iter([(key, json_value)].into_iter()),
+                            [(key, json_value)].into_iter().collect(),
                         );
                     }
                     Some(Value::Object(ref mut map)) => {
@@ -674,6 +732,11 @@ impl ApplinClient {
         Ok(body)
     }
 
+    /// # Errors
+    /// * Returns `Err` when the request to the server fails.
+    /// * Returns `Err` when the server returns a response other than 2xx or 4xx.
+    /// # Panics
+    /// Panics when it fails to build the target URL.
     pub fn rpc(&mut self, url: impl AsRef<str>) -> Result<bool, String> {
         let url = self.url.join(url.as_ref()).unwrap();
         let body = self.vars_json_body()?;
@@ -684,15 +747,18 @@ impl ApplinClient {
         Ok(opt_response.is_some())
     }
 
+    /// # Errors
+    /// Returns `Err` when the variable is not a string.
     pub fn set_text(
         &mut self,
         var_name: impl AsRef<str>,
-        text: impl ToString,
+        text: impl AsRef<str>,
     ) -> Result<bool, String> {
         let var_name = var_name.as_ref();
-        let var = Var::String(text.to_string());
-        if Some(&var) == self.vars.get(var_name) {
-            return Ok(true);
+        if let Some(Var::String(existing_text)) = self.vars.get(var_name) {
+            if existing_text == text.as_ref() {
+                return Ok(true);
+            }
         }
         let widget = self.find_var(var_name)?;
         let poll_delay_ms = match widget {
@@ -702,12 +768,12 @@ impl ApplinClient {
             other => {
                 return Err(format!(
                     "cannot set text for widget of wrong type: {other:?}"
-                ))
+                ));
             }
         };
         let opt_prev_value = self
             .vars
-            .insert(var_name.to_string(), Var::String(text.to_string()));
+            .insert(var_name.to_string(), Var::String(text.as_ref().to_string()));
         if let Some(prev_value) = opt_prev_value {
             let Var::String(..) = prev_value else {
                 return Err(format!("set var {var_name:?} to string but it previously was a different type: {prev_value:?}"));
@@ -720,6 +786,9 @@ impl ApplinClient {
         }
     }
 
+    /// # Errors
+    /// * Returns `Err` when a modal is visible.
+    /// * Returns `Err` when one of the widget's actions returns `Err`.
     pub fn tap(&mut self, widget: Widget) -> Result<bool, String> {
         if self.modal.is_some() {
             return Err(format!(
@@ -753,10 +822,13 @@ impl ApplinClient {
         }
     }
 
+    /// # Errors
+    /// * Returns `Err` when the widget or modal button is not found.
+    /// * Returns `Err` when one of the actions returns `Err`.
     pub fn tap_id(&mut self, id: impl AsRef<str>) -> Result<bool, String> {
         let id = id.as_ref();
         if let Some(modal) = &self.modal {
-            let Some(button) = modal.buttons.iter().filter(|b| b.id == id).next() else {
+            let Some(button) = modal.buttons.iter().find(|b| b.id == id) else {
                 return Err(format!("found no modal button with id {id:?}"));
             };
             let actions = button.actions.clone();
@@ -767,15 +839,13 @@ impl ApplinClient {
         }
     }
 
+    /// # Errors
+    /// * Returns `Err` when the widget or modal button is not found.
+    /// * Returns `Err` when one of the actions returns `Err`.
     pub fn tap_text(&mut self, text: impl AsRef<str>) -> Result<bool, String> {
         let text = text.as_ref();
         if let Some(modal) = &self.modal {
-            let Some(button) = modal
-                .buttons
-                .iter()
-                .filter(|b| b.text.contains(text))
-                .next()
-            else {
+            let Some(button) = modal.buttons.iter().find(|b| b.text.contains(text)) else {
                 return Err(format!(
                     "found no modal button with text containing {text:?}"
                 ));
@@ -788,10 +858,18 @@ impl ApplinClient {
         }
     }
 
+    /// # Errors
+    /// * Returns `Err` when the widget or modal button is not found.
+    /// * Returns `Err` when one of the actions returns `Err`.
     pub fn tap_var(&mut self, var_name: impl AsRef<str>) -> Result<bool, String> {
         self.tap(self.find_var(var_name)?.clone_shallow())
     }
 
+    /// # Errors
+    /// * Returns `Err` when a request to the server fails.
+    /// * Returns `Err` when the server returns a response other than 2xx or 4xx.
+    /// # Panics
+    /// Panics when it fails to build the target URL.
     pub fn upload(
         &mut self,
         url: impl AsRef<str>,
@@ -805,6 +883,8 @@ impl ApplinClient {
         Ok(opt_response.is_some())
     }
 
+    /// # Errors
+    /// Returns `Err` when the page contains no widget with the specified variable.
     pub fn var(&self, var_name: impl AsRef<str>) -> Result<Var, String> {
         let var_name = var_name.as_ref();
         self.page()
@@ -813,9 +893,10 @@ impl ApplinClient {
             .filter(|(name, _initial)| *name == var_name)
             .map(|(name, initial)| self.vars.get(name).unwrap_or(&initial).clone())
             .next()
-            .ok_or_else(|| format!("no widget found with var_name={:?}", var_name))
+            .ok_or_else(|| format!("no widget found with var_name={var_name:?}"))
     }
 
+    #[must_use]
     pub fn vars(&self) -> Vec<(String, Var)> {
         self.page()
             .vars()

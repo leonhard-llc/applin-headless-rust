@@ -11,6 +11,7 @@ version = "0.1.0"
 
 [dependencies]
 applin = "^0.2.7"
+#applin = { version = "0", path = "../applin-rust", features = ["servlin"] }
 url = "2"
 ureq = { version = "2", features = ["cookies", "json"] }
 

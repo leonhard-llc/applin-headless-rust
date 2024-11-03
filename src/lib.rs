@@ -10,7 +10,7 @@
 //!
 //! # Cargo Geiger Safety Report
 //! # Changelog
-//!
+//! - v0.1.1 2024-11-03 - Add `is_checked`.
 //! - v0.1.0 - Impersonates applin-ios 0.38.0.
 #![forbid(unsafe_code)]
 
@@ -564,6 +564,25 @@ impl ApplinClient {
             }
         }
         Ok(true)
+    }
+
+    /// # Errors
+    /// Returns `Err` when the widget is not found.
+    pub fn is_checked(&self, text: impl AsRef<str>) -> Result<bool, String> {
+        let text = text.as_ref();
+        let widget = self
+            .page()
+            .descendents()
+            .into_iter()
+            .find(|w| w.text().contains(text) && matches!(w, Widget::Checkbox(..)))
+            .ok_or_else(|| format!("checkbox not found with text {text:?}"))?;
+        let Widget::Checkbox(checkbox) = widget else {
+            unreachable!()
+        };
+        let Some(var) = self.vars.get(&checkbox.var_name) else {
+            return Ok(false);
+        };
+        var.bool()
     }
 
     /// # Errors

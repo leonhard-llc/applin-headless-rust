@@ -7,12 +7,12 @@ keywords = ["applin", "headless", "client", "test", "testing"]
 license-file = "License.txt"
 name = "applin_headless"
 repository = "https://github.com/leonhard-llc/applin-headless-rust"
-version = "0.1.0"
+version = "0.1.1"
 
 [dependencies]
-applin = "^0.2.7"
-#applin = { version = "0", path = "../applin-rust", features = ["servlin"] }
+applin = { version = "^0.2.7", path = "../applin-rust", default-features = false }
 url = "2"
 ureq = { version = "2", features = ["cookies", "json"] }
 
 [dev-dependencies]
+time = "0.3.35" # ureq dep. Work around compiler error in 0.3.36.

@@ -22,7 +22,7 @@ Symbols:
 
 Functions  Expressions  Impls  Traits  Methods  Dependency
 
-0/0        0/0          0/0    0/0     0/0      🔒  applin_headless 0.1.1
+0/0        0/0          0/0    0/0     0/0      🔒  applin_headless 0.1.2
 0/0        0/0          0/0    0/0     0/0      🔒  ├── applin 0.2.9
 0/0        7/20         0/0    0/0     0/0      ☢️  │   ├── nanorand 0.7.0
 3/7        46/222       0/1    0/0     1/3      ☢️  │   │   ├── getrandom 0.2.12
@@ -125,5 +125,6 @@ Functions  Expressions  Impls  Traits  Methods  Dependency
 
 ```
 # Changelog
+- v0.1.2 2024-11-13 - Add `log_pages`.
 - v0.1.1 2024-11-03 - Add `is_checked`.
 - v0.1.0 - Impersonates applin-ios 0.38.0.

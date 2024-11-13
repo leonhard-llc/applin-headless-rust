@@ -10,6 +10,7 @@
 //!
 //! # Cargo Geiger Safety Report
 //! # Changelog
+//! - v0.1.2 2024-11-13 - Add `log_pages`.
 //! - v0.1.1 2024-11-03 - Add `is_checked`.
 //! - v0.1.0 - Impersonates applin-ios 0.38.0.
 #![forbid(unsafe_code)]
@@ -451,11 +452,13 @@ impl From<&Var> for Value {
 
 pub struct ApplinClient {
     pub agent: ureq::Agent,
-    pub url: Url,
     pub last_error: Option<String>,
+    /// Every time we get a new version of a page, print it to stdout.
+    pub log_pages: bool,
     pub modal: Option<Action>,
-    pub stack: Vec<(String, Page)>,
     pub next_photo_upload: Option<Vec<u8>>,
+    pub stack: Vec<(String, Page)>,
+    pub url: Url,
     pub vars: HashMap<String, Var>,
 }
 
@@ -465,14 +468,16 @@ impl ApplinClient {
     pub fn new(url: impl AsRef<str>) -> Self {
         Self {
             agent: ureq::AgentBuilder::new()
+                .max_idle_connections(1)
                 .timeout(Duration::from_secs(10))
                 .redirects(0)
                 .build(),
-            url: Url::parse(url.as_ref()).unwrap(),
             last_error: None,
+            log_pages: true,
             modal: None,
-            stack: vec![],
             next_photo_upload: None,
+            stack: vec![],
+            url: Url::parse(url.as_ref()).unwrap(),
             vars: HashMap::new(),
         }
     }
@@ -663,7 +668,9 @@ impl ApplinClient {
         };
         assert_eq!(response.content_type(), "application/vnd.applin_response");
         let applin_response: ApplinResponse = response.into_json().map_err(|e| e.to_string())?;
-        println!("{applin_response:?}");
+        if self.log_pages {
+            println!("{applin_response:?}");
+        }
         let mut found_ids = HashSet::new();
         let mut found_var_names = HashSet::new();
         for widget in applin_response.page.descendents() {

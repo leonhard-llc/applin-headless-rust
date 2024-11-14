@@ -7,7 +7,7 @@ keywords = ["applin", "headless", "client", "test", "testing"]
 license-file = "License.txt"
 name = "applin_headless"
 repository = "https://github.com/leonhard-llc/applin-headless-rust"
-version = "0.1.2"
+version = "0.2.0"
 
 [dependencies]
 applin = { version = "^0.2.7", path = "../applin-rust", default-features = false }

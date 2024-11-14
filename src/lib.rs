@@ -10,9 +10,9 @@
 //!
 //! # Cargo Geiger Safety Report
 //! # Changelog
-//! - v0.1.2 2024-11-13
+//! - v0.2.0 2024-11-13
+//!     - Add `cookie_file_path` arg to `ApplinClient::new`.
 //!     - Add `log_pages`.
-//!     - Add `new_persistent`.
 //! - v0.1.1 2024-11-03 - Add `is_checked`.
 //! - v0.1.0 - Impersonates applin-ios 0.38.0.
 #![forbid(unsafe_code)]
@@ -471,40 +471,25 @@ pub struct ApplinClient {
 }
 
 impl ApplinClient {
+    /// When `cookie_file_path` is `Some`, the client reads the specified file and writes it
+    /// whenever its cookies change.
     /// # Panics
     /// Panics when it fails to parse `url`.
-    pub fn new(url: impl AsRef<str>) -> Self {
+    pub fn new(url: impl AsRef<str>, cookie_file_path: Option<impl Into<PathBuf>>) -> Self {
+        let mut agent_builder = ureq::AgentBuilder::new()
+            .max_idle_connections(1)
+            .timeout(Duration::from_secs(10))
+            .redirects(0);
+        if let Some(path) = cookie_file_path {
+            let path_buf = path.into();
+            let file = File::open(&path_buf).map_err(|e| e.to_string()).unwrap();
+            let store = CookieStore::load_json(BufReader::new(file)).unwrap();
+            agent_builder = agent_builder.cookie_store(store);
+        }
         Self {
-            agent: ureq::AgentBuilder::new()
-                .max_idle_connections(1)
-                .timeout(Duration::from_secs(10))
-                .redirects(0)
-                .build(),
+            agent: agent_builder.build(),
             cookies_hash: 0,
             cookie_file_path: None,
-            last_error: None,
-            log_pages: true,
-            modal: None,
-            next_photo_upload: None,
-            stack: vec![],
-            url: Url::parse(url.as_ref()).unwrap(),
-            vars: HashMap::new(),
-        }
-    }
-
-    pub fn new_persistent(url: impl AsRef<str>, cookie_file_path: impl Into<PathBuf>) -> Self {
-        let path = cookie_file_path.into();
-        let file = File::open(&path).map_err(|e| e.to_string()).unwrap();
-        let store = CookieStore::load_json(BufReader::new(file)).unwrap();
-        Self {
-            agent: ureq::AgentBuilder::new()
-                .max_idle_connections(1)
-                .timeout(Duration::from_secs(10))
-                .redirects(0)
-                .cookie_store(store)
-                .build(),
-            cookies_hash: 0,
-            cookie_file_path: Some(path),
             last_error: None,
             log_pages: true,
             modal: None,

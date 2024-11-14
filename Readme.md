@@ -22,7 +22,7 @@ Symbols:
 
 Functions  Expressions  Impls  Traits  Methods  Dependency
 
-0/0        0/0          0/0    0/0     0/0      🔒  applin_headless 0.1.2
+0/0        0/0          0/0    0/0     0/0      🔒  applin_headless 0.2.0
 0/0        0/0          0/0    0/0     0/0      🔒  ├── applin 0.2.9
 0/0        7/20         0/0    0/0     0/0      ☢️  │   ├── nanorand 0.7.0
 0/0        5/5          0/0    0/0     0/0      ☢️  │   ├── serde 1.0.197
@@ -96,8 +96,8 @@ Functions  Expressions  Impls  Traits  Methods  Dependency
 
 ```
 # Changelog
-- v0.1.2 2024-11-13
+- v0.2.0 2024-11-13
+    - Add `cookie_file_path` arg to `ApplinClient::new`.
     - Add `log_pages`.
-    - Add `new_persistent`.
 - v0.1.1 2024-11-03 - Add `is_checked`.
 - v0.1.0 - Impersonates applin-ios 0.38.0.

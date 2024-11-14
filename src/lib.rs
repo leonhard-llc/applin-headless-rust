@@ -10,19 +10,25 @@
 //!
 //! # Cargo Geiger Safety Report
 //! # Changelog
-//! - v0.1.2 2024-11-13 - Add `log_pages`.
+//! - v0.1.2 2024-11-13
+//!     - Add `log_pages`.
+//!     - Add `new_persistent`.
 //! - v0.1.1 2024-11-03 - Add `is_checked`.
 //! - v0.1.0 - Impersonates applin-ios 0.38.0.
 #![forbid(unsafe_code)]
-
-use std::collections::{HashMap, HashSet};
-use std::time::Duration;
 
 use applin::action::{pop, Action};
 use applin::page::{Page, PlainPage};
 use applin::util::Real32;
 use applin::widget::{empty, Column, Form, FormSection, GroupedRowTable, Scroll, Widget};
 use applin::ApplinResponse;
+use cookie_store::{CookieExpiration, CookieStore};
+use std::collections::{HashMap, HashSet};
+use std::fs::File;
+use std::hash::{DefaultHasher, Hash, Hasher};
+use std::io::{BufReader, BufWriter, Write};
+use std::path::PathBuf;
+use std::time::Duration;
 use ureq::serde_json::{Number, Value};
 use url::Url;
 
@@ -452,6 +458,8 @@ impl From<&Var> for Value {
 
 pub struct ApplinClient {
     pub agent: ureq::Agent,
+    pub cookies_hash: u64,
+    pub cookie_file_path: Option<PathBuf>,
     pub last_error: Option<String>,
     /// Every time we get a new version of a page, print it to stdout.
     pub log_pages: bool,
@@ -472,6 +480,31 @@ impl ApplinClient {
                 .timeout(Duration::from_secs(10))
                 .redirects(0)
                 .build(),
+            cookies_hash: 0,
+            cookie_file_path: None,
+            last_error: None,
+            log_pages: true,
+            modal: None,
+            next_photo_upload: None,
+            stack: vec![],
+            url: Url::parse(url.as_ref()).unwrap(),
+            vars: HashMap::new(),
+        }
+    }
+
+    pub fn new_persistent(url: impl AsRef<str>, cookie_file_path: impl Into<PathBuf>) -> Self {
+        let path = cookie_file_path.into();
+        let file = File::open(&path).map_err(|e| e.to_string()).unwrap();
+        let store = CookieStore::load_json(BufReader::new(file)).unwrap();
+        Self {
+            agent: ureq::AgentBuilder::new()
+                .max_idle_connections(1)
+                .timeout(Duration::from_secs(10))
+                .redirects(0)
+                .cookie_store(store)
+                .build(),
+            cookies_hash: 0,
+            cookie_file_path: Some(path),
             last_error: None,
             log_pages: true,
             modal: None,
@@ -506,6 +539,29 @@ impl ApplinClient {
         &mut self,
         result: Result<ureq::Response, ureq::Error>,
     ) -> Result<Option<ureq::Response>, String> {
+        if let Some(path) = &self.cookie_file_path {
+            let mut hasher = DefaultHasher::new();
+            for cookie in self.agent.cookie_store().iter_unexpired() {
+                cookie.domain.hash(&mut hasher);
+                cookie.path.hash(&mut hasher);
+                match cookie.expires {
+                    CookieExpiration::AtUtc(t) => t.hash(&mut hasher),
+                    CookieExpiration::SessionEnd => {}
+                };
+            }
+            let new_hash = hasher.finish();
+            if self.cookies_hash != new_hash {
+                self.cookies_hash = new_hash;
+                let file = File::open(path).map_err(|e| e.to_string())?;
+                let mut writer = BufWriter::new(file);
+                self.agent
+                    .cookie_store()
+                    .save_json(&mut writer)
+                    .map_err(|e| e.to_string())?;
+                writer.flush().map_err(|e| e.to_string())?;
+                println!("wrote {path:?}");
+            }
+        }
         let response = match result {
             Ok(r) => r,
             Err(ureq::Error::Status(_status, response)) => response,

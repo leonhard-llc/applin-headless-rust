@@ -11,8 +11,9 @@ version = "0.1.2"
 
 [dependencies]
 applin = { version = "^0.2.7", path = "../applin-rust", default-features = false }
-url = "2"
-ureq = { version = "2", features = ["cookies", "json"] }
+cookie_store = { version = "^0.21.0", default-features = false, features = [] }
+url = { version = "2", default-features = false, features = [] }
+ureq = { version = "2", default-features = false, features = ["cookies", "json"] }
 
 [dev-dependencies]
-time = "0.3.35" # ureq dep. Work around compiler error in 0.3.36.
+time = { version = "0.3.35", default-features = false } # ureq dep. Work around compiler error in 0.3.36.

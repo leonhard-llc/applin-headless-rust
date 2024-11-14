@@ -475,21 +475,20 @@ impl ApplinClient {
     /// whenever its cookies change.
     /// # Panics
     /// Panics when it fails to parse `url`.
-    pub fn new(url: impl AsRef<str>, cookie_file_path: Option<impl Into<PathBuf>>) -> Self {
+    pub fn new(url: impl AsRef<str>, cookie_file_path: Option<PathBuf>) -> Self {
         let mut agent_builder = ureq::AgentBuilder::new()
             .max_idle_connections(1)
             .timeout(Duration::from_secs(10))
             .redirects(0);
-        if let Some(path) = cookie_file_path {
-            let path_buf = path.into();
-            let file = File::open(&path_buf).map_err(|e| e.to_string()).unwrap();
+        if let Some(path) = &cookie_file_path {
+            let file = File::open(path).map_err(|e| e.to_string()).unwrap();
             let store: CookieStore = cookie_store::serde::json::load(BufReader::new(file)).unwrap();
             agent_builder = agent_builder.cookie_store(store);
         }
         Self {
             agent: agent_builder.build(),
             cookies_hash: 0,
-            cookie_file_path: None,
+            cookie_file_path,
             last_error: None,
             log_pages: true,
             modal: None,

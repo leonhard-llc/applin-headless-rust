@@ -26,7 +26,7 @@ use cookie_store::{CookieExpiration, CookieStore};
 use std::collections::{HashMap, HashSet};
 use std::fs::File;
 use std::hash::{DefaultHasher, Hash, Hasher};
-use std::io::{BufReader, BufWriter, Write};
+use std::io::{BufReader, BufWriter, ErrorKind, Write};
 use std::path::PathBuf;
 use std::time::Duration;
 use ureq::serde_json::{Number, Value};
@@ -481,9 +481,16 @@ impl ApplinClient {
             .timeout(Duration::from_secs(10))
             .redirects(0);
         if let Some(path) = &cookie_file_path {
-            let file = File::open(path).map_err(|e| e.to_string()).unwrap();
-            let store: CookieStore = cookie_store::serde::json::load(BufReader::new(file)).unwrap();
-            agent_builder = agent_builder.cookie_store(store);
+            match File::open(path) {
+                Ok(file) => {
+                    let store: CookieStore =
+                        cookie_store::serde::json::load(BufReader::new(file)).unwrap();
+                    agent_builder = agent_builder.cookie_store(store);
+                }
+                Err(e) if e.kind() == ErrorKind::NotFound => {}
+                Err(e) if e.kind() == ErrorKind::Other && e.raw_os_error() == Some(2) => {}
+                Err(e) => panic!("error reading {path:?}: {e}"),
+            }
         }
         Self {
             agent: agent_builder.build(),
@@ -536,7 +543,8 @@ impl ApplinClient {
             let new_hash = hasher.finish();
             if self.cookies_hash != new_hash {
                 self.cookies_hash = new_hash;
-                let file = File::open(path).map_err(|e| e.to_string())?;
+                let file =
+                    File::create(path).map_err(|e| format!("error writing {path:?}: {e}"))?;
                 let mut writer = BufWriter::new(file);
                 cookie_store::serde::json::save(&self.agent.cookie_store(), &mut writer)
                     .map_err(|e| e.to_string())?;

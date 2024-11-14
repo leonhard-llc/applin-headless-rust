@@ -483,7 +483,7 @@ impl ApplinClient {
         if let Some(path) = cookie_file_path {
             let path_buf = path.into();
             let file = File::open(&path_buf).map_err(|e| e.to_string()).unwrap();
-            let store = CookieStore::load_json(BufReader::new(file)).unwrap();
+            let store: CookieStore = cookie_store::serde::json::load(BufReader::new(file)).unwrap();
             agent_builder = agent_builder.cookie_store(store);
         }
         Self {
@@ -539,9 +539,7 @@ impl ApplinClient {
                 self.cookies_hash = new_hash;
                 let file = File::open(path).map_err(|e| e.to_string())?;
                 let mut writer = BufWriter::new(file);
-                self.agent
-                    .cookie_store()
-                    .save_json(&mut writer)
+                cookie_store::serde::json::save(&self.agent.cookie_store(), &mut writer)
                     .map_err(|e| e.to_string())?;
                 writer.flush().map_err(|e| e.to_string())?;
                 println!("wrote {path:?}");

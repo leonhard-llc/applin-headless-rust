@@ -11,7 +11,7 @@ version = "0.2.0"
 
 [dependencies]
 applin = { version = "^0.2.7", path = "../applin-rust", default-features = false }
-cookie_store = { version = "^0.21.0", default-features = false, features = [] }
+cookie_store = { version = "^0.21.1", default-features = false, features = ["serde_json"] }
 url = { version = "2", default-features = false, features = [] }
 ureq = { version = "2", default-features = false, features = ["cookies", "json"] }
 

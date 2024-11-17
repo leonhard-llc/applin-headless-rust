@@ -10,6 +10,9 @@
 //!
 //! # Cargo Geiger Safety Report
 //! # Changelog
+//! - v0.3.0 2024-11-17
+//!    - Change signature of [`ApplinClient::is_checked`] to take `&Widget`.
+//!    - Rename `WidgetExtension::vars` to [`WidgetExtension::var_names_and_initials`].
 //! - v0.2.0 2024-11-13
 //!     - Add `cookie_file_path` arg to `ApplinClient::new`.
 //!     - Add `log_pages`.
@@ -52,8 +55,8 @@ pub trait WidgetExtension {
     fn text(&self) -> &str;
     #[must_use]
     fn validated(&self) -> bool;
-    #[must_use]
-    fn vars(&self) -> Vec<(&str, Var)>;
+    /// Gets the widget's variable names and initial values.
+    fn var_names_and_initials(&self) -> Vec<(&str, Var)>;
 }
 
 impl WidgetExtension for Widget {
@@ -292,7 +295,7 @@ impl WidgetExtension for Widget {
     }
 
     #[allow(clippy::needless_lifetimes)]
-    fn vars<'x>(&'x self) -> Vec<(&'x str, Var)> {
+    fn var_names_and_initials<'x>(&'x self) -> Vec<(&'x str, Var)> {
         match self {
             Widget::BackButton(..)
             | Widget::Button(..)
@@ -384,15 +387,12 @@ impl PageExtension for Page {
     }
 
     fn vars(&self) -> Vec<(&str, Var)> {
+        let widget = match self {
+            Page::Nav(inner) => &inner.widget,
+            Page::Plain(inner) => &inner.widget,
+        };
         let mut result = vec![];
-        match self {
-            Page::Nav(page) => page
-                .widget
-                .depth_first_walk(&mut |widget| result.append(&mut widget.vars())),
-            Page::Plain(page) => page
-                .widget
-                .depth_first_walk(&mut |widget| result.append(&mut widget.vars())),
-        }
+        widget.depth_first_walk(&mut |widget| result.append(&mut widget.var_names_and_initials()));
         result
     }
 }
@@ -618,22 +618,21 @@ impl ApplinClient {
     }
 
     /// # Errors
-    /// Returns `Err` when the widget is not found.
-    pub fn is_checked(&self, text: impl AsRef<str>) -> Result<bool, String> {
-        let text = text.as_ref();
-        let widget = self
-            .page()
-            .descendents()
-            .into_iter()
-            .find(|w| w.text().contains(text) && matches!(w, Widget::Checkbox(..)))
-            .ok_or_else(|| format!("checkbox not found with text {text:?}"))?;
-        let Widget::Checkbox(checkbox) = widget else {
-            unreachable!()
-        };
-        let Some(var) = self.vars.get(&checkbox.var_name) else {
-            return Ok(false);
-        };
-        var.bool()
+    /// Returns `Err` when:
+    /// - the widget is not a Checkbox or `CheckboxButton`
+    /// - the variable is set and it's not bool
+    pub fn is_checked(&self, widget: &Widget) -> Result<bool, String> {
+        match widget {
+            Widget::Checkbox(inner) => self
+                .vars
+                .get(&inner.var_name)
+                .unwrap_or(&Var::Bool(inner.initial_bool))
+                .bool(),
+            Widget::CheckboxButton(inner) => Ok(inner.initial_bool),
+            _ => Err(format!(
+                "widget is not a Checkbox or CheckboxButton: {widget:?}"
+            )),
+        }
     }
 
     /// # Errors
@@ -665,7 +664,11 @@ impl ApplinClient {
         self.page()
             .descendents()
             .into_iter()
-            .find(|w| w.vars().iter().any(|(n, _v)| *n == var_name))
+            .find(|w| {
+                w.var_names_and_initials()
+                    .iter()
+                    .any(|(n, _v)| *n == var_name)
+            })
             .ok_or_else(|| format!("widget not found with var_name {var_name:?}"))
     }
 
@@ -724,7 +727,7 @@ impl ApplinClient {
             if !id.is_empty() && !found_ids.insert(id) {
                 return Err(format!("page has more than one widget with id {id:?}"));
             }
-            for (var_name, _var) in widget.vars() {
+            for (var_name, _var) in widget.var_names_and_initials() {
                 if !found_var_names.insert(var_name) {
                     return Err(format!(
                         "page has more than one widget with var_name {var_name:?}"

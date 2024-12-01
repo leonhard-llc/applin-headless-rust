@@ -9,6 +9,7 @@ Create an Applin™ client and control it from Rust code. Great for tests.
 <https://www.applin.dev/>
 
 # Cargo Geiger Safety Report
+
 ```
 
 Metric output format: x/y
@@ -22,7 +23,7 @@ Symbols:
 
 Functions  Expressions  Impls  Traits  Methods  Dependency
 
-0/0        0/0          0/0    0/0     0/0      🔒  applin_headless 0.3.0
+0/0        0/0          0/0    0/0     0/0      🔒  applin_headless 0.3.1
 0/0        0/0          0/0    0/0     0/0      🔒  ├── applin 0.2.9
 0/0        7/20         0/0    0/0     0/0      ☢️  │   ├── nanorand 0.7.0
 0/0        5/5          0/0    0/0     0/0      ☢️  │   ├── serde 1.0.197
@@ -189,10 +190,13 @@ Functions  Expressions  Impls  Traits  Methods  Dependency
 16/38      3827/4353    129/140 13/13   160/173
 
 ```
+
 # Changelog
+
+- v0.3.1 - Lint.
 - v0.3.0 2024-11-17
-   - Change signature of [`ApplinClient::is_checked`] to take `&Widget`.
-   - Rename `WidgetExtension::vars` to [`WidgetExtension::var_names_and_initials`].
+    - Change signature of [`ApplinClient::is_checked`] to take `&Widget`.
+    - Rename `WidgetExtension::vars` to [`WidgetExtension::var_names_and_initials`].
 - v0.2.0 2024-11-13
     - Add `cookie_file_path` arg to `ApplinClient::new`.
     - Add `log_pages`.

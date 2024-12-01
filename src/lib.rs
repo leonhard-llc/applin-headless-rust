@@ -9,10 +9,13 @@
 //! <https://www.applin.dev/>
 //!
 //! # Cargo Geiger Safety Report
+//!
 //! # Changelog
+//!
+//! - v0.3.1 - Lint.
 //! - v0.3.0 2024-11-17
-//!    - Change signature of [`ApplinClient::is_checked`] to take `&Widget`.
-//!    - Rename `WidgetExtension::vars` to [`WidgetExtension::var_names_and_initials`].
+//!     - Change signature of [`ApplinClient::is_checked`] to take `&Widget`.
+//!     - Rename `WidgetExtension::vars` to [`WidgetExtension::var_names_and_initials`].
 //! - v0.2.0 2024-11-13
 //!     - Add `cookie_file_path` arg to `ApplinClient::new`.
 //!     - Add `log_pages`.
@@ -44,7 +47,7 @@ pub trait WidgetExtension {
     fn clone_shallow(&self) -> Self;
     fn depth_first_walk<'x>(&'x self, f: &mut impl FnMut(&'x Widget));
     #[must_use]
-    fn descendents<'x>(&'x self) -> Vec<&Widget>;
+    fn descendents(&self) -> Vec<&Widget>;
     #[must_use]
     fn error(&self) -> &str;
     #[must_use]
@@ -165,7 +168,7 @@ impl WidgetExtension for Widget {
         }
     }
 
-    fn descendents<'x>(&'x self) -> Vec<&Widget> {
+    fn descendents<'x>(&'x self) -> Vec<&'x Widget> {
         let mut result: Vec<&'x Widget> = vec![];
         self.depth_first_walk(&mut |widget: &'x Widget| result.push(widget));
         result

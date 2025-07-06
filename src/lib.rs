@@ -9,9 +9,8 @@
 //! <https://www.applin.dev/>
 //!
 //! # Cargo Geiger Safety Report
-//!
 //! # Changelog
-//!
+//! - v0.4.0 2025-07-06 - Use `applin` v0.3.
 //! - v0.3.1 - Lint.
 //! - v0.3.0 2024-11-17
 //!     - Change signature of [`ApplinClient::is_checked`] to take `&Widget`.
@@ -22,6 +21,7 @@
 //! - v0.1.1 2024-11-03 - Add `is_checked`.
 //! - v0.1.0 - Impersonates applin-ios 0.38.0.
 #![forbid(unsafe_code)]
+#![allow(clippy::unnecessary_debug_formatting)]
 
 use applin::action::{pop, Action};
 use applin::page::{Page, PlainPage};
@@ -541,7 +541,7 @@ impl ApplinClient {
                 match cookie.expires {
                     CookieExpiration::AtUtc(t) => t.hash(&mut hasher),
                     CookieExpiration::SessionEnd => {}
-                };
+                }
             }
             let new_hash = hasher.finish();
             if self.cookies_hash != new_hash {
